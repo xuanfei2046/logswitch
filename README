@@ -37,8 +37,8 @@ echo "sudosh;exit;" >> /home/$user/.bashrc
 chmod 700 ~/.cssh
 chmod 600 ~/.cssh/id_rsa
 
-#comnitty configure ---> ~/.comnittyrc
-cat /home/$user/.comnittyrc
+#comnitty configure ---> ~/.omnittyrc
+cat /home/$user/.omnittyrc
 [test1]
 192.168.1.1 -l root 
 192.168.1.2 -p 2222
@@ -53,8 +53,13 @@ vim /usr/local/cssh/etc/cssh_command_allow
 vim /usr/local/cssh/etc/cssh_command_deny
 
 #********************
-#Bug report 
+#Auditing
 #********************
+sudosh-replay 
+tail ~/cssh.log
+
+#Bug Report
 E-mail: xuanfei2046[at]gmail.com
 http://github.com/xuanfei2046/logswitch
+
 
