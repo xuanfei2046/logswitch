@@ -1,0 +1,127 @@
+#!/bin/bash -
+#===============================================================================
+#        AUTHOR:  XuanFei
+#         EMAIL:  xuanfei2046@163.com
+#
+#       CREATED:  2010年11月25日 02时16分07秒 CST
+#
+#          FILE:  sudosh-login.sh
+#         USAGE:  ./sudosh-login.sh
+#       OPTIONS:  ---
+#   DESCRIPTION:  sudosh login
+#         NOTES:  ---
+#===============================================================================
+
+SUDOSH="/usr/local/bin/sudosh";
+SSH="/usr/local/cssh/bin/ssh";
+OMNITTY="/usr/local/omnitty/bin/omnitty -W 18 -T120";
+
+#define func
+
+checkExit(){
+        if [[ $1 = 'exit' || $1 = 'quit' ]]
+        then
+         exit;
+        fi
+
+        if [[ $1 = 'back' || $1 = 'b' ]]
+        then
+            main;
+        fi
+}
+
+ssh_login(){
+        #echo "****** ssh ******";
+        #sleep 1;
+        read -p "Please input IP:" name;
+        checkExit $name;
+
+        if [ -z "$name" ]
+        then
+                echo "Please input IP(example:192.168.1.1)";
+                ssh_login;
+        else
+                $SSH  root@$name;
+                if [ $? ]
+                then
+                    ssh_login
+                fi
+        fi
+}
+
+omnitty_login(){
+    $OMNITTY
+    if [ $? ]
+    then
+     main;
+    fi
+}
+
+helps(){
+cat  <<EOF
+****** Help ******
+Example:
+    Please input IP:192.168.1.1
+
+    Please choose tools:1
+    or
+    Please choose tools:ssh
+
+Quit:
+    "exit"
+    or
+    "quit"
+
+
+EOF
+    main;
+}
+
+#---------main ----------
+main(){
+#start sudosh
+#sudosh;
+
+#init bash shell
+#stty intr ^\\
+#trap exit 2
+
+#remote log server
+echo 
+echo "****** Welcome to LogServer ******";
+echo "h help"
+echo "e exit";
+echo "1 ssh";
+echo "2 omnitty";
+
+read -p "Please choose tools:" id;
+checkExit $id;
+#ssh  loger@$name;
+
+case $id in
+1 | ssh    )
+    ssh_login;;
+
+2 | omnitty)
+    omnitty_login;;
+
+h | help   )
+    helps;;
+e | exit   )
+    exit;;
+          *)
+    echo "Error: '$id' can't found !!!";
+    echo 
+    main;;
+esac;
+
+echo "Bye";
+clear
+exit;
+}
+
+#watch use 
+#$SUDOSH;
+
+#do samethings
+main;

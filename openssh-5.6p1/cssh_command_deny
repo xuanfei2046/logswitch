@@ -1,0 +1,22 @@
+#此配置文件支持正则表达式(与Perl兼容）
+# CSSH_ALLOW_COMMAND 为内置宏代表"ls|cat|date|telnet ..."(读取自etc/cssh_command_allow )
+#;(?!(ls|cat)\s+)
+
+
+;\s+(?!(CSSH_ALLOW_COMMANDS)\b)
+\&\&\s+(?!(CSSH_ALLOW_COMMANDS)\b)
+\|\s+(?!(CSSH_ALLOW_COMMANDS)\b)
+
+#防止sed awk 等 工具系统命令调用
+system\(
+`
+sed.*-i
+
+#限制用手rm命令
+^rm\b|[\|\;\&]rm\b
+
+#限制重定向
+\>\s+((?!\/tmp\/)|.*\.\.\/)
+
+#禁止查看高危文件
+/etc/(passwd|shadow|group)

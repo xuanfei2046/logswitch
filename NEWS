@@ -1,0 +1,18 @@
+2011.02.14 release r1.14
+1. omnitty add F9 F10 
+F9:maximize
+F10:add ip-list
+
+2. sport cygwin 
+
+2011.02.14 release r1.11
+1. sport review history ,use keyboard to "Up Down Left Right" and sport change command 
+2. sport TAB complete command 
+
+2011.02.09 release r1.02
+add menu for winssh
+add same command to allow
+
+2011.02.09 release r1.01
+fix cssh: stack smashing detected
+

@@ -1,0 +1,60 @@
+#********************
+#install step:
+#********************
+
+# 1 check configure
+mkdir /usr/local/cssh
+./configure --prefix=/usr/local/cssh
+
+# 2 complie 
+make
+
+# 3 install 
+make install
+
+# 4 add $prefix(/usr/local) to PATH
+#edit /etc/profile
+#add "export $PATH=$PATH:/usr/local/cssh/bin"
+echo "export $PATH=$PATH:/usr/local/bin" >> /etc/profile
+source /etc/profile
+
+#-------------------
+#init step:
+#-------------------
+sudosh -i
+
+#-------------------
+#add user step:
+#-------------------
+#edit /home/$user/.bashrc
+#echo "/usr/local/bin/sudosh;exit;" >> /home/$user/.bashrc
+echo "sudosh;exit;" >> /home/$user/.bashrc
+
+#-------------------
+#config file:
+#-------------------
+#cssh RSA IdentityFile ---> ~/.cssh/id_rsa
+chmod 700 ~/.cssh
+chmod 600 ~/.cssh/id_rsa
+
+#comnitty configure ---> ~/.comnittyrc
+cat /home/$user/.comnittyrc
+[test1]
+192.168.1.1 -l root 
+192.168.1.2 -p 2222
+xuanfei@192.168.1.3 -p 2046
+#192.168.1.4
+[test2]
+#192.168.2.1
+192.168.2.2
+
+#edit ssh's command 
+vim /usr/local/cssh/etc/cssh_command_allow
+vim /usr/local/cssh/etc/cssh_command_deny
+
+#********************
+#Bug report 
+#********************
+E-mail: xuanfei2046[at]gmail.com
+http://github.com/xuanfei2046/logswitch
+

@@ -1,0 +1,328 @@
+#!@PERL@ -w
+# $Id: sudosh-replay,v 1.3 2004/10/22 03:59:15 dhanks Exp $
+# sudosh-replay - replay sudosh session as they were originally recorded
+#
+# Copyright 2004 and $Date: 2004/10/22 03:59:15 $
+#                Douglas Richard Hanks Jr.
+#
+# Licensed under the Open Software License version 2.0
+#
+# This program is free software; you can redistribute it
+# and/or modify it under the terms of the Open Software
+# License, version 2.0 by Lauwrence E. Rosen.
+#
+# This program is distributed in the hope that it will be
+# useful, but WITHOUT ANY WARRANTY; without even the implied
+# warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+# PURPOSE.  See the Open Software License for details.
+
+use strict;
+use Getopt::Std;
+
+my %o = ();
+my %h = ();
+my $logdir = '@VLOGDIR@';
+my $unknown = 0;
+
+getopts('hd:vV', \%o);
+
+if(exists $o{h})
+{
+	print STDOUT <<EOH;
+Usage: $0 ID [MULTIPLIER]
+Replay sudosh sessions as they were recorded originally
+
+-d	Specify alternate sudosh directory where sessions are stored.
+-h	Show help synopsis.
+-v,-V	Show version.
+
+ID
+	The session id of which you wish to view.  The format is user-id
+	You may obtain a list of ids by just running $0
+
+MULTIPLIER
+	This is optional.  If you wish to "speed up" the playback of the
+	session, specify a rate to increase it.  For example if you used
+	a multiplier of "2" it would playback the session 2x the original
+	recording speed.
+
+Example: how to get a list of sessions to replay
+# sudosh-replay
+
+Example: how to replay a session as it was recorded
+# sudosh-replay ID
+
+Example: how to replay a session, but just echo the contains to the screen
+# sudosh-replay ID 0
+
+This is @PACKAGE_NAME@ version @VERSION@
+EOH
+	print STDOUT "Report bugs to <", qw(@PACKAGE_BUGREPORT@), ">\n";
+	exit 0;
+}
+
+if(exists $o{v} || exists $o{V})
+{
+	print "This is @PACKAGE_NAME@ version @VERSION@\n";
+	print STDOUT "Report bugs to <", qw(@PACKAGE_BUGREPORT@), ">\n";
+	exit 0;
+}
+
+if(exists $o{d})
+{
+	$logdir = $o{d};
+}
+
+# Gather sessions into hash
+opendir DIR, $logdir or die "open(): $logdir: $!\n";
+while(defined(my $file = readdir(DIR)))
+{
+	next if $file =~ /^\.\.?$/; # Skip . and ..
+	next if $file =~ /^.*?\@VFILEDELIMIT@.*?\@VFILEDELIMIT@input\@VFILEDELIMIT@\d+$/;
+	next if $file =~ /^.*?\@VFILEDELIMIT@input\@VFILEDELIMIT@\d+$/;
+
+	if($file =~ /^(.*?)\@VFILEDELIMIT@(.*?)\@VFILEDELIMIT@(script|time)\@VFILEDELIMIT@(\d+)\@VFILEDELIMIT@(\w+)$/)
+	{
+		my $user = $1;
+		my $to = $2;
+		my $type = $3;
+		my $time = $4;
+		my $rand = $5;
+
+		$h{$time}{to} = $to;
+		$h{$time}{type} = $type;
+		$h{$time}{user} = $user;
+		$h{$time}{rand} = $rand;
+	}
+	elsif($file =~ /^(.*?)\@VFILEDELIMIT@(.*?)\@VFILEDELIMIT@(script|time)\@VFILEDELIMIT@(\d+)$/)
+	{
+		my $user = $1;
+		my $to = $2;
+		my $type = $3;
+		my $time = $4;
+
+		$h{$time}{to} = $to;
+		$h{$time}{type} = $type;
+		$h{$time}{user} = $user;
+	}
+	elsif($file =~ /^(.*?)\@VFILEDELIMIT@(script|time)\@VFILEDELIMIT@(\d+)$/)
+	{
+		my $user = $1;
+		my $type = $2;
+		my $time = $3;
+
+		$h{$time}{type} = $type;
+		$h{$time}{user} = $user;
+		$h{$time}{to} = undef;
+	}
+	else
+	{
+		$unknown++;
+	}
+}
+closedir(DIR);
+
+if(defined $ARGV[0])
+{
+	defined $ARGV[2] and defined $ARGV[1] and replay($ARGV[0], $ARGV[1], $ARGV[2]);
+	defined $ARGV[1] and replay($ARGV[0], $ARGV[1]);
+	defined $ARGV[1] or replay($ARGV[0]);
+	exit 0;
+}
+
+if(scalar(keys %h) == 0)
+{
+	print STDOUT "No sessions are logged in $logdir\n";
+	exit 255;
+}
+
+my $tmp = undef;
+my %tmp = ();
+
+print STDOUT sprintf("%-25s %-12s %-12s %s\n", 'Date', 'From', 'To', 'ID');
+print STDOUT sprintf("%-25s %-12s %-12s %s\n", '====', '====', '==', '==');
+
+foreach my $tmp (keys %h)
+{
+	$tmp{$h{$tmp}{user}} = 1;
+}
+
+foreach my $user (sort { $a cmp $b } keys %tmp)
+{
+	foreach my $e (sort { $a cmp $b } keys %h)
+	{
+		$user eq $h{$e}{user} or next;
+
+		if(defined $h{$e}{rand})
+		{
+			$tmp = sprintf("%s@VFILEDELIMIT@%s@VFILEDELIMIT@%i@VFILEDELIMIT@%s", $h{$e}{user},
+				$h{$e}{to}, $e, $h{$e}{rand});
+			print STDOUT sprintf("%-25s %-12s %-12s %s\n",
+				scalar localtime $e, $h{$e}{user},
+				$h{$e}{to}, $tmp);
+		}
+		elsif(defined $h{$e}{to})
+		{
+			$tmp = sprintf("%s@VFILEDELIMIT@%s@VFILEDELIMIT@%i **", $h{$e}{user},
+				$h{$e}{to}, $e);
+			print STDOUT sprintf("%-25s %-12s %-12s %s\n",
+				scalar localtime $e, $h{$e}{user},
+				$h{$e}{to}, $tmp);
+		}
+		else
+		{
+			$tmp = sprintf("%s@VFILEDELIMIT@%i", $h{$e}{user}, $e);
+			print STDOUT sprintf("%-25s %-12s %-12s %s\n",
+				scalar localtime $e, $h{$e}{user}, '???', $tmp);
+		}
+	}
+	print STDOUT "\n";
+}
+
+print STDOUT "??? indicates no information available (pre 1.4.3)\n";
+print STDOUT "** indicates no random file names (pre 1.6.0)\n";
+print STDOUT "\nUsage: sudosh-replay ID [MULTIPLIER] [MAXWAIT]\n";
+print STDOUT "See 'sudosh-replay -h' for more help.\n";
+print STDOUT "Example: sudosh-replay $tmp 1 2\n";
+
+sub replay
+{
+	my $id = shift;
+	my $fscript = undef;
+	my $ftime = undef;
+
+	if($id =~ /^(.*?)\@VFILEDELIMIT@(.*?)\@VFILEDELIMIT@(\d+)\@VFILEDELIMIT@(\w+)$/)
+	{
+		my $user = $1;
+		my $to = $2;
+		my $time = $3;
+		my $rand = $4;
+
+		unless(exists $h{$time})
+		{
+			print STDERR "No such time record.  Use 'sudosh-replay' for a list of IDs.\n";
+			exit 255;
+		}
+
+		if($h{$time}{user} ne $user)
+		{
+			print STDERR "No such user on record.  Use 'sudosh-replay' for a list of IDs.\n";
+			exit 255;
+		}
+
+		if($h{$time}{to} ne $to)
+		{
+			print STDERR "No such To: user on record.  Use 'sudosh-replay' for a list of IDs.\n";
+			exit 255;
+		}
+
+		$fscript = sprintf("%s/%s@VFILEDELIMIT@%s@VFILEDELIMIT@script@VFILEDELIMIT@%i@VFILEDELIMIT@%s", $logdir, $user,
+			$to, $time, $rand);
+		$ftime = sprintf("%s/%s@VFILEDELIMIT@%s@VFILEDELIMIT@time@VFILEDELIMIT@%i@VFILEDELIMIT@%s", $logdir, $user,
+			$to, $time, $rand);
+	}
+	elsif($id =~ /^(.*?)\@VFILEDELIMIT@(.*?)\@VFILEDELIMIT@(\d+)$/)
+	{
+		my $user = $1;
+		my $to = $2;
+		my $time = $3;
+
+		unless(exists $h{$time})
+		{
+			print STDERR "No such time record.  Use 'sudosh-replay' for a list of IDs.\n";
+			exit 255;
+		}
+
+		if($h{$time}{user} ne $user)
+		{
+			print STDERR "No such user on record.  Use 'sudosh-replay' for a list of IDs.\n";
+			exit 255;
+		}
+
+		if($h{$time}{to} ne $to)
+		{
+			print STDERR "No such To: user on record.  Use 'sudosh-replay' for a list of IDs.\n";
+			exit 255;
+		}
+
+		$fscript = sprintf("%s/%s@VFILEDELIMIT@%s@VFILEDELIMIT@script@VFILEDELIMIT@%i", $logdir, $user,
+			$to, $time);
+		$ftime = sprintf("%s/%s@VFILEDELIMIT@%s@VFILEDELIMIT@time@VFILEDELIMIT@%i", $logdir, $user,
+			$to, $time);
+	}
+	elsif($id =~ /^(.*?)\@VFILEDELIMIT@(\d+)$/)
+	{
+		my $user = $1;
+		my $time = $2;
+
+		unless(exists $h{$time})
+		{
+			print STDERR "No such time record.  Use 'sudosh-replay' for a list of IDs.\n";
+			exit 255;
+		}
+
+		if($h{$time}{user} ne $user)
+		{
+			print STDERR "No such user on record.  Use 'sudosh-replay' for a list of IDs.\n";
+			exit 255;
+		}
+
+		$fscript = sprintf("%s/%s@VFILEDELIMIT@script@VFILEDELIMIT@%i", $logdir, $user, $time);
+		$ftime = sprintf("%s/%s@VFILEDELIMIT@time@VFILEDELIMIT@%i", $logdir, $user, $time);
+	}
+	else
+	{
+		print STDERR "Invalid ID format.  Use 'sudosh-replay' for a list of IDs.\n";
+		exit 255;
+	}
+
+	-r $fscript or die "$fscript: $!\n";
+	-r $ftime or print STDERR "The timing information is incomplete.  Someone deleted the file from $logdir\n";
+	-r $ftime or die "$ftime: $!\n";
+
+	$| = 1;
+	my $divisor = shift;
+	my $maxwait = shift;
+
+	defined $divisor or $divisor = 1;
+	defined $maxwait or $maxwait = 1;
+
+	open TIMING, $ftime or die "$ftime: $!\n";
+	open SCRIPT, $fscript or die "$ftime: $!\n";
+
+	my $block;
+
+	if($divisor == 0)
+	{
+		while(<SCRIPT>)
+		{
+			print;
+		}
+
+		print "\n";
+		exit 0;
+	}
+
+	while(<TIMING>)
+	{
+		(my $delay, my $blocksize) = split / /, $_, 2;
+
+		if ($delay / $divisor > 0.0001)
+		{
+			if($delay / $divisor > $maxwait)
+			{
+				$delay = $maxwait / $divisor;
+			}
+			select(undef, undef, undef, $delay / $divisor - 0.0001);
+		}
+
+		read(SCRIPT, $block, $blocksize) or
+			die "read(): $ftime: $!\n";
+
+		print $block;
+	}
+
+	print "\n";
+	print STDERR "[info]: sudosh-replay done\n";
+	exit 0;
+}
